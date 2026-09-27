@@ -1,14 +1,29 @@
+/*
+ * Trueward palette.
+ *
+ * The same tokens the tracker and the calendar use, so the three read as one
+ * product: antd's #1677ff as the accent, #f6f7f9 behind cards, Google-ish
+ * greys for secondary text. The previous #2563eb was close enough to look
+ * like a mistake rather than a choice when the apps sat side by side.
+ *
+ * The dark block is kept — this app is the only one of the three that had it,
+ * and taking it away to match would be matching downwards.
+ */
 :root {
   --bg: #f6f7f9;
   --card: #ffffff;
-  --text: #1c2330;
-  --muted: #667085;
-  --line: #e4e7ec;
-  --accent: #2563eb;
+  --text: #202124;
+  --muted: #5f6368;
+  --line: #e8e8e8;
+  --line-soft: #f0f0f0;
+  --accent: #1677ff;
+  --accent-soft: #e6f0ff;
   --accent-ink: #ffffff;
-  --danger: #c2410c;
-  --ok: #15803d;
-  --warn: #b45309;
+  --danger: #d93025;
+  --ok: #188038;
+  --warn: #e8710a;
+  --radius: 8px;
+  --shadow: 0 1px 2px rgb(16 24 40 / 0.04), 0 1px 3px rgb(16 24 40 / 0.06);
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
@@ -18,10 +33,13 @@
     --text: #e6e9ef;
     --muted: #97a0af;
     --line: #262d38;
+    --line-soft: #1f252e;
     --accent: #4f8cff;
+    --accent-soft: #1b2635;
     --danger: #f08a5d;
     --ok: #4ade80;
     --warn: #fbbf24;
+    --shadow: 0 1px 3px rgb(0 0 0 / 0.4);
     color-scheme: dark;
   }
 }
@@ -35,10 +53,49 @@ body {
 }
 .page { max-width: 1080px; margin: 0 auto; padding: 24px 16px 80px; }
 
+/* ---- brand -------------------------------------------------------------
+   The mark and wordmark are shared with the calendar's sign-in card, which
+   is the only thing tying the two apps together visually at a glance. */
+.brand { display: flex; align-items: center; gap: 10px; }
+.brand-mark {
+  width: 32px; height: 32px; border-radius: 9px; flex: none;
+  display: grid; place-items: center;
+  background: linear-gradient(135deg, #2f5bea, #7c3aed);
+  color: #fff; font-weight: 700; font-size: 16px;
+}
+.brand-name { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: -0.01em; }
+.brand-name span { opacity: 0.55; font-weight: 500; }
+.who {
+  align-self: center; color: var(--muted); font-size: 13px;
+  max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+
+/* ---- sign in ---------------------------------------------------------- */
+.signin { min-height: 100dvh; display: grid; place-items: center; padding: 24px; }
+.signin-card {
+  width: 100%; max-width: 380px; background: var(--card); border: 1px solid var(--line);
+  border-radius: 12px; padding: 24px; display: grid; gap: 14px; box-shadow: var(--shadow);
+}
+.signin-lede { margin: -4px 0 2px; font-size: 13px; line-height: 1.5; }
+.field { display: grid; gap: 5px; font-size: 12px; color: var(--muted); }
+.field input { font-size: 14px; padding: 9px 11px; }
+.btn-block { width: 100%; justify-content: center; padding: 9px 12px; font-size: 14px; }
+
+/* ---- boot states ------------------------------------------------------ */
+.boot {
+  min-height: 100dvh; display: grid; place-items: center; gap: 8px;
+  grid-auto-flow: column; color: var(--muted); padding: 24px; text-align: center;
+}
+.boot-error { grid-auto-flow: row; color: var(--danger); max-width: 460px; margin: 0 auto; line-height: 1.6; }
+.boot code {
+  background: var(--card); border: 1px solid var(--line); border-radius: 4px;
+  padding: 1px 5px; font-size: 12px;
+}
+
 .top { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
 h1 { margin: 0; font-size: 24px; letter-spacing: -0.01em; }
-.sub { margin: 4px 0 0; color: var(--muted); }
-.top-actions { display: flex; gap: 8px; }
+.sub { margin: 6px 0 0; color: var(--muted); font-size: 13px; }
+.top-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 
 .sources { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 16px 0 8px; }
 .chip {
@@ -54,7 +111,7 @@ h1 { margin: 0; font-size: 24px; letter-spacing: -0.01em; }
 .toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 12px; }
 .tabs { display: inline-flex; background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 2px; }
 .tab { border: 0; background: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; color: var(--muted); font: inherit; }
-.tab.active { background: var(--accent); color: var(--accent-ink); }
+.tab.active { background: var(--accent); color: var(--accent-ink); font-weight: 500; }
 .search { flex: 1; min-width: 200px; }
 input, select, textarea {
   font: inherit; color: inherit; background: var(--card); border: 1px solid var(--line);
@@ -68,8 +125,11 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
 .list { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
 .job {
   display: flex; gap: 16px; justify-content: space-between; align-items: flex-start;
-  background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px;
+  background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+  padding: 12px 14px; box-shadow: var(--shadow);
+  transition: border-color .12s, box-shadow .12s;
 }
+.job:hover { border-color: #d0d5dd; }
 .job.applied { border-left: 3px solid var(--ok); }
 .job.dismissed { opacity: 0.7; }
 .job-main { min-width: 0; flex: 1; }
@@ -81,7 +141,7 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
 .time { font-variant-numeric: tabular-nums; }
 .src { font-size: 11px; padding: 1px 7px; border-radius: 4px; background: var(--bg); border: 1px solid var(--line); }
 .badge { font-size: 11px; padding: 1px 7px; border-radius: 4px; }
-.badge.applied { background: color-mix(in srgb, var(--ok) 15%, transparent); color: var(--ok); }
+.badge.applied { background: color-mix(in srgb, var(--ok) 14%, transparent); color: var(--ok); }
 .details { margin-top: 8px; }
 .snippet { margin: 0 0 6px; white-space: pre-line; color: var(--text); }
 .notes { margin: 0 0 6px; }
@@ -95,7 +155,7 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
 }
 .btn:hover { border-color: var(--muted); }
 .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
-.btn.primary:hover { filter: brightness(1.08); }
+.btn.primary:hover { filter: brightness(1.06); }
 .btn.danger { color: var(--danger); }
 .btn:disabled { opacity: 0.7; cursor: progress; }
 .link { background: none; border: 0; padding: 0; cursor: pointer; font: inherit; color: var(--accent); }

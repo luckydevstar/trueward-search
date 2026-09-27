@@ -9,7 +9,7 @@
     "build": "npm --prefix client run build",
     "start": "node server/index.js",
     "scrape": "node server/scrape-cli.js",
-    "test": "node --test server/"
+    "test": "node --test --test-timeout=20000 server/*.test.js"
   },
   "dependencies": {
     "better-sqlite3": "^12.11.1",

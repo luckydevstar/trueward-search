@@ -32,7 +32,7 @@ function dayLabel(iso) {
   return d.toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' });
 }
 
-export default function App() {
+export default function App({ user, onSignOut, onSessionLost }) {
   const [tab, setTab] = useState('active');
   const [source, setSource] = useState('');
   const [q, setQ] = useState('');
@@ -57,11 +57,15 @@ export default function App() {
       setData(await api.list({ status: tab, source, q: debouncedQ, limit }));
       setError('');
     } catch (e) {
+      // A cookie expires while the tab sits open; re-checking sends you to
+      // the login screen instead of leaving "Not signed in" in a red bar
+      // above a list that will never load again.
+      if (/not signed in/i.test(e.message)) return onSessionLost?.();
       setError(e.message);
     } finally {
       setLoading(false);
     }
-  }, [tab, source, debouncedQ, limit]);
+  }, [tab, source, debouncedQ, limit, onSessionLost]);
 
   useEffect(() => { setLimit(200); }, [tab, source, debouncedQ]);
 
@@ -180,16 +184,27 @@ export default function App() {
     <div className="page">
       <header className="top">
         <div>
-          <h1>Remote US Dev Jobs</h1>
+          <div className="brand">
+            <span className="brand-mark" aria-hidden>T</span>
+            <h1 className="brand-name">
+              Trueward <span>Search</span>
+            </h1>
+          </div>
           <p className="sub">
-            Remote only · US · Software development · No hybrid / on-site / on-site interviews
+            Remote only · US · Software development · No hybrid or on-site
           </p>
         </div>
         <div className="top-actions">
+          {user && (
+            <span className="who" title={`Signed in as ${user.email}`}>
+              {user.name || user.email}
+            </span>
+          )}
           <button className="btn" onClick={() => setEditing({})}>+ Add job</button>
           <button className="btn primary" onClick={onRefresh} disabled={status?.running}>
             {status?.running ? <><span className="spinner" /> Refreshing…</> : 'Refresh now'}
           </button>
+          <button className="btn" onClick={onSignOut}>Sign out</button>
         </div>
       </header>
 

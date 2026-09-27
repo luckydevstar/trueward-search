@@ -5,12 +5,64 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { listJobs, getJob, insertJob, updateJob, dismissJob, deleteJob, getRuns, counts, STATUSES } from './db.js';
 import { runAll, isRunning, SOURCES } from './scraper.js';
+import { clearSession, loadUser, missingEnv, requireUser, setSession, signIn, verifyAccessToken, roleFor, isAllowed } from './auth.js';
 
 const app = express();
 app.use(express.json());
 
 const PORT = Number(process.env.PORT || 4000);
 const REFRESH_MINUTES = Number(process.env.REFRESH_MINUTES || 30);
+
+// ---- Auth ----
+//
+// Trueward Guru's accounts, admins only. See server/auth.js for why the
+// session is an httpOnly cookie and why tokens are verified locally.
+//
+// loadUser runs before everything and only *resolves* the session; the gate
+// below is what refuses. Keeping those separate is what lets /api/auth/me
+// answer "not signed in" with a 200 instead of a 401 the client has to treat
+// as an error.
+app.use(loadUser);
+
+app.post('/api/auth/login', async (req, res) => {
+  const missing = missingEnv();
+  if (missing.length) {
+    return res.status(503).json({ error: `The server is missing ${missing.join(' and ')}.` });
+  }
+
+  const { email, password } = req.body || {};
+  if (!email?.trim() || !password) return res.status(400).json({ error: 'Email and password are required' });
+
+  const { session, error } = await signIn(email.trim(), password);
+  if (error) return res.status(401).json({ error });
+
+  // Authenticating is not the same as being allowed in. A bidder has a valid
+  // Trueward password and no business here, and is told so plainly rather
+  // than being shown an empty app.
+  const claims = await verifyAccessToken(session.access_token);
+  const row = claims?.sub ? await roleFor(session.access_token, claims.sub) : null;
+  if (!isAllowed(row)) {
+    return res.status(403).json({ error: 'This app is for Trueward admins. Your account is not one.' });
+  }
+
+  setSession(res, session);
+  res.json({ user: { id: claims.sub, email: row.email || email, name: row.name || null, role: row.role } });
+});
+
+app.post('/api/auth/logout', (_req, res) => {
+  clearSession(res);
+  res.json({ ok: true });
+});
+
+/** Who is signed in, or null. Deliberately 200 either way. */
+app.get('/api/auth/me', (req, res) => {
+  res.json({ user: req.user ?? null, configured: missingEnv().length === 0 });
+});
+
+// Everything below this line needs a session. Placed above the routes rather
+// than repeated on each, so a route added later is gated by default instead
+// of by remembering.
+app.use('/api', requireUser);
 
 // ---- Read ----
 app.get('/api/jobs', (req, res) => {

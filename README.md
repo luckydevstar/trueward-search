@@ -1,4 +1,4 @@
-# JobScrap: remote US software-developer jobs
+# Trueward Search — remote US software-developer jobs
 
 Collects recent jobs from several job boards, keeps only the ones that match the rules below,
 and shows them newest first in a web UI with Apply, Mark applied, Edit and Delete.
@@ -9,21 +9,54 @@ and shows them newest first in a web UI with Apply, Mark applied, Edit and Delet
 2. Fully remote only. Rejects hybrid, on-site, in-office days, required commuting/relocation, **on-site or in-person interviews**, and required in-person attendance. Tech phrases like "hybrid cloud" or "hybrid retrieval" are ignored, and "remote or hybrid" counts as remote.
 3. Open to US candidates.
 
+## Signing in
+
+Part of Trueward, so it uses Trueward Guru's accounts: the same Supabase Auth,
+the same password, **admins only**. There is no user table here and no way to
+create an account — the server reads the tracker's `app_user` for the role and
+admits `admin` and `super_admin`. A bidder can authenticate and is then told
+plainly that this app is not for them, rather than shown an empty list.
+
+Two things make that safe without much machinery:
+
+**The session is an httpOnly cookie.** The browser holds a token it cannot
+read, no Supabase SDK ships to the client, and the SPA's entire contact with
+auth is POSTing a form to `/api/auth/login` and reading `/api/auth/me`.
+
+**Tokens are verified locally.** The project signs with ES256 and publishes a
+JWKS, so checking a signature is WebCrypto over a cached key — no network call
+on the request path. Calling `/auth/v1/user` per request would have put a
+Supabase round trip in front of every job listing.
+
+`server/auth.js` is hand-written, so it is tested like something
+security-critical (`server/auth.test.js`): the JWKS fetch is stubbed with a key
+we control, which lets a *valid* token be minted, and the refusals are asserted
+individually — expired, tampered payload, unknown `kid`, wrong key, `alg:none`
+with a real `kid`, and HS256 signed with the published public key (the classic
+algorithm-confusion attack, which pinning to ES256 is what stops).
+
+The gate itself is one line — `app.use('/api', requireUser)` above the routes
+rather than repeated on each, so a route added later is protected by default
+instead of by remembering.
+
 ## Running it
 
 ```bash
 npm install && npm --prefix client install
-cp .env.example .env      # optional: add Adzuna keys, change refresh interval
+cp .env.example .env      # SUPABASE_URL + SUPABASE_ANON_KEY are required
 npm run build             # build the UI once
 npm start                 # http://localhost:4000
 ```
+
+Without those two variables nobody can sign in, and the app says exactly that
+instead of showing a login form that cannot work.
 
 When the server starts, it fetches from every source and then refreshes every 30 minutes (`REFRESH_MINUTES`).
 The first run takes a few minutes because some sources are deliberately throttled.
 
 For development with hot reload: `npm run dev` (UI on http://localhost:5173, API on :4000).
 To scrape once from the terminal: `npm run scrape` or `npm run scrape -- linkedin jobgether`.
-To run the filter tests: `npm test`.
+To run the tests: `npm test` — filters and auth.
 
 ## Sources
 

@@ -1,0 +1,23 @@
+{
+  "name": "jobscrap",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Aggregates recent remote US software-developer jobs from multiple job boards",
+  "scripts": {
+    "dev": "concurrently -n server,client -c blue,green \"node --watch server/index.js\" \"npm --prefix client run dev\"",
+    "build": "npm --prefix client run build",
+    "start": "node server/index.js",
+    "scrape": "node server/scrape-cli.js",
+    "test": "node --test server/"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.11.1",
+    "cheerio": "^1.2.0",
+    "dotenv": "^18.0.4",
+    "express": "^5.2.1"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.4"
+  }
+}

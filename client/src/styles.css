@@ -1,0 +1,138 @@
+:root {
+  --bg: #f6f7f9;
+  --card: #ffffff;
+  --text: #1c2330;
+  --muted: #667085;
+  --line: #e4e7ec;
+  --accent: #2563eb;
+  --accent-ink: #ffffff;
+  --danger: #c2410c;
+  --ok: #15803d;
+  --warn: #b45309;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1318;
+    --card: #171c23;
+    --text: #e6e9ef;
+    --muted: #97a0af;
+    --line: #262d38;
+    --accent: #4f8cff;
+    --danger: #f08a5d;
+    --ok: #4ade80;
+    --warn: #fbbf24;
+    color-scheme: dark;
+  }
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.45 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+.page { max-width: 1080px; margin: 0 auto; padding: 24px 16px 80px; }
+
+.top { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+h1 { margin: 0; font-size: 24px; letter-spacing: -0.01em; }
+.sub { margin: 4px 0 0; color: var(--muted); }
+.top-actions { display: flex; gap: 8px; }
+
+.sources { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 16px 0 8px; }
+.chip {
+  display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px;
+  background: var(--card); border: 1px solid var(--line); font-size: 12px; cursor: default;
+}
+.chip em { font-style: normal; color: var(--muted); }
+.chip .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
+.chip.ok .dot { background: var(--ok); }
+.chip.err .dot { background: var(--danger); }
+.chip.off { opacity: 0.55; }
+
+.toolbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 12px; }
+.tabs { display: inline-flex; background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 2px; }
+.tab { border: 0; background: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; color: var(--muted); font: inherit; }
+.tab.active { background: var(--accent); color: var(--accent-ink); }
+.search { flex: 1; min-width: 200px; }
+input, select, textarea {
+  font: inherit; color: inherit; background: var(--card); border: 1px solid var(--line);
+  border-radius: 8px; padding: 7px 10px;
+}
+input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+
+.summary { display: flex; justify-content: space-between; margin: 14px 2px 4px; color: var(--muted); font-size: 13px; }
+
+.day { font-size: 13px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); margin: 22px 2px 8px; }
+.list { list-style: none; padding: 0; margin: 0; display: grid; gap: 8px; }
+.job {
+  display: flex; gap: 16px; justify-content: space-between; align-items: flex-start;
+  background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px;
+}
+.job.applied { border-left: 3px solid var(--ok); }
+.job.dismissed { opacity: 0.7; }
+.job-main { min-width: 0; flex: 1; }
+.job-head { display: flex; gap: 8px; align-items: center; }
+.title { font-size: 15px; font-weight: 600; text-align: left; color: var(--text); }
+.meta { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-top: 4px; color: var(--muted); font-size: 13px; }
+.meta strong { color: var(--text); font-weight: 500; }
+.salary { color: var(--ok); }
+.time { font-variant-numeric: tabular-nums; }
+.src { font-size: 11px; padding: 1px 7px; border-radius: 4px; background: var(--bg); border: 1px solid var(--line); }
+.badge { font-size: 11px; padding: 1px 7px; border-radius: 4px; }
+.badge.applied { background: color-mix(in srgb, var(--ok) 15%, transparent); color: var(--ok); }
+.details { margin-top: 8px; }
+.snippet { margin: 0 0 6px; white-space: pre-line; color: var(--text); }
+.notes { margin: 0 0 6px; }
+.details a { color: var(--accent); word-break: break-all; }
+
+.actions { display: flex; gap: 6px; flex-shrink: 0; flex-wrap: wrap; justify-content: flex-end; }
+.btn {
+  font: inherit; font-size: 13px; padding: 6px 12px; border-radius: 7px; cursor: pointer;
+  background: var(--card); color: var(--text); border: 1px solid var(--line); white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 6px;
+}
+.btn:hover { border-color: var(--muted); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn.danger { color: var(--danger); }
+.btn:disabled { opacity: 0.7; cursor: progress; }
+.link { background: none; border: 0; padding: 0; cursor: pointer; font: inherit; color: var(--accent); }
+.link.danger { color: var(--danger); }
+.title.link { color: var(--text); }
+.title.link:hover { color: var(--accent); }
+
+.more { display: flex; justify-content: center; margin-top: 20px; }
+.muted { color: var(--muted); }
+.small { font-size: 12px; }
+.empty { text-align: center; color: var(--muted); padding: 60px 0; }
+.error { background: color-mix(in srgb, var(--danger) 12%, transparent); color: var(--danger); padding: 8px 12px; border-radius: 8px; margin: 8px 0; }
+
+.spinner {
+  width: 12px; height: 12px; border: 2px solid currentColor; border-right-color: transparent;
+  border-radius: 50%; animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.toast {
+  position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%);
+  background: var(--text); color: var(--bg); padding: 10px 16px; border-radius: 8px;
+  display: flex; gap: 16px; align-items: center; box-shadow: 0 6px 24px rgb(0 0 0 / 0.2); max-width: calc(100% - 32px);
+}
+.toast .link { color: var(--bg); font-weight: 600; text-decoration: underline; }
+
+.modal-backdrop { position: fixed; inset: 0; background: rgb(0 0 0 / 0.4); display: grid; place-items: center; padding: 16px; }
+.modal {
+  background: var(--card); border-radius: 12px; padding: 20px; width: min(560px, 100%);
+  display: grid; gap: 10px; box-shadow: 0 20px 60px rgb(0 0 0 / 0.3);
+}
+.modal h3 { margin: 0 0 4px; }
+.modal label { display: grid; gap: 4px; font-size: 12px; color: var(--muted); flex: 1; }
+.modal .row { display: flex; gap: 10px; flex-wrap: wrap; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 6px; }
+
+@media (max-width: 680px) {
+  .job { flex-direction: column; }
+  .actions { justify-content: flex-start; }
+}

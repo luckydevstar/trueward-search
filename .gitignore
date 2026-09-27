@@ -1,5 +1,10 @@
-node_modules/
-client/node_modules/
-client/dist/
-data/
+node_modules
+.next
+out
+build
 .env
+.env*.local
+.DS_Store
+*.tsbuildinfo
+next-env.d.ts
+data/

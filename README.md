@@ -1,62 +1,121 @@
 # Trueward Search — remote US software-developer jobs
 
 Collects recent jobs from several job boards, keeps only the ones that match the rules below,
-and shows them newest first in a web UI with Apply, Mark applied, Edit and Delete.
+and shows them newest first with Apply, Mark applied, Edit and Delete.
 
-**Rules** (all in [server/filters.js](server/filters.js), covered by [server/filters.test.js](server/filters.test.js)):
+Part of Trueward: one Next.js app, signed in with the same admin accounts as
+the tracker and the calendar.
+
+**Rules** (all in [src/lib/filters.js](src/lib/filters.js), covered by [src/lib/filters.test.js](src/lib/filters.test.js)):
 
 1. Software-developer roles only, judged by title. Excludes sales/solutions/support engineers, managers, recruiters, interns, etc.
 2. Fully remote only. Rejects hybrid, on-site, in-office days, required commuting/relocation, **on-site or in-person interviews**, and required in-person attendance. Tech phrases like "hybrid cloud" or "hybrid retrieval" are ignored, and "remote or hybrid" counts as remote.
 3. Open to US candidates.
 
+## Architecture
+
+One Next.js app. There is no separate backend or frontend any more: route
+handlers under `src/app/api/` are the BFF, the UI is a client component beside
+them, and the jobs live in the same Supabase Postgres as Trueward Guru and the
+calendar (every object prefixed `search_`, so nothing collides).
+
+| | |
+| --- | --- |
+| `GET/POST /api/jobs` | list with filters and search, manual entry |
+| `PATCH/DELETE /api/jobs/[id]` | edit, mark applied, dismiss, purge |
+| `POST /api/jobs/dismiss` `…/restore` | bulk clear, and its undo |
+| `GET /api/status` | sources, last runs, whether a scrape is in progress |
+| `POST/GET /api/refresh` | scrape now |
+
+**What the move off SQLite changed.** Two things stopped being free:
+
+*Knowing whether a scrape is running.* It used to be a `Set` in the Express
+process. On serverless each request is its own process, so an in-memory flag
+says "no" to every caller — the spinner would never appear and two runs would
+never notice each other. It is now read from `search_run`: a row with no
+`finished_at` counts as running, until it goes stale, because a function
+killed mid-run (a timeout, a deploy) leaves its row open forever and would
+otherwise block refreshing permanently.
+
+*Truncating the description.* SQLite did `substr(description, 1, 400)` in the
+list query. PostgREST cannot express that in a select, so it lives in the
+`search_job_list` view instead — otherwise every row would ship 5 KB of
+description to render a 400-character snippet.
+
 ## Signing in
 
-Part of Trueward, so it uses Trueward Guru's accounts: the same Supabase Auth,
-the same password, **admins only**. There is no user table here and no way to
-create an account — the server reads the tracker's `app_user` for the role and
-admits `admin` and `super_admin`. A bidder can authenticate and is then told
-plainly that this app is not for them, rather than shown an empty list.
+Trueward Guru's accounts, admins only — the same Supabase Auth as the tracker
+and the calendar. There is no user table here and no way to create an account;
+the policies ask `app_user` for the signing-in account's role and admit `admin`
+and `super_admin`.
 
-Two things make that safe without much machinery:
+`src/proxy.ts` redirects anonymous page requests to `/login` and answers `/api`
+with a 401 rather than a redirect — otherwise the UI's `fetch` would receive
+the login page's HTML and report a parse error instead of "you are signed out".
+That gate is a courtesy; **RLS is the boundary.** Delete the proxy and an
+anonymous request still gets no rows.
 
-**The session is an httpOnly cookie.** The browser holds a token it cannot
-read, no Supabase SDK ships to the client, and the SPA's entire contact with
-auth is POSTing a form to `/api/auth/login` and reading `/api/auth/me`.
+## Scraping
 
-**Tokens are verified locally.** The project signs with ES256 and publishes a
-JWKS, so checking a signature is WebCrypto over a cached key — no network call
-on the request path. Calling `/auth/v1/user` per request would have put a
-Supabase round trip in front of every job listing.
+The scraper and its seven sources moved across unchanged — they are plain Node
+with `fetch` and cheerio, and rewriting working code to change no behaviour is
+not a migration, it is a risk.
 
-`server/auth.js` is hand-written, so it is tested like something
-security-critical (`server/auth.test.js`): the JWKS fetch is stubbed with a key
-we control, which lets a *valid* token be minted, and the refusals are asserted
-individually — expired, tampered payload, unknown `kid`, wrong key, `alg:none`
-with a real `kid`, and HS256 signed with the published public key (the classic
-algorithm-confusion attack, which pinning to ES256 is what stops).
+What did change is *who* runs them. There is no long-lived process to hold a
+`setInterval` any more, so scheduled runs come from Vercel Cron
+(`vercel.json`, every 30 minutes) hitting `/api/refresh`.
 
-The gate itself is one line — `app.use('/api', requireUser)` above the routes
-rather than repeated on each, so a route added later is protected by default
-instead of by remembering.
+That route has two ways in, and they are deliberately different:
+
+- **"Refresh now"** runs as the signed-in admin, under RLS. A person is there,
+  so their own session is the credential.
+- **The cron** has nobody behind it, so it needs the service-role key — and
+  must prove it is the scheduler with `CRON_SECRET`. Without that secret set
+  the cron branch is refused outright rather than falling back to an
+  unauthenticated path that writes to the database.
+
+So the service-role key exists here, unlike in the calendar, but it is
+reachable only from that one branch.
+
+Scraping is slow, so the route sets `maxDuration = 300`. Each source records
+its own run row as it finishes, so a run cut short by the platform's cap leaves
+the sources that completed updated rather than losing the lot. On a Hobby plan
+the cap is 60s, which will usually cut a full run short — either upgrade, or
+narrow each tick with `{"sources": ["linkedin"]}`.
 
 ## Running it
 
 ```bash
-npm install && npm --prefix client install
-cp .env.example .env      # SUPABASE_URL + SUPABASE_ANON_KEY are required
-npm run build             # build the UI once
-npm start                 # http://localhost:4000
+npm install
+cp .env.example .env     # NEXT_PUBLIC_SUPABASE_URL + _ANON_KEY are required
 ```
 
-Without those two variables nobody can sign in, and the app says exactly that
-instead of showing a login form that cannot work.
+Then **paste `supabase/schema.sql` into the Supabase SQL editor and run it.**
+Nothing works before that, and the app says so rather than showing an empty
+list. Afterwards:
 
-When the server starts, it fetches from every source and then refreshes every 30 minutes (`REFRESH_MINUTES`).
-The first run takes a few minutes because some sources are deliberately throttled.
+```bash
+npm run dev              # http://localhost:3200
+```
 
-For development with hot reload: `npm run dev` (UI on http://localhost:5173, API on :4000).
-To scrape once from the terminal: `npm run scrape` or `npm run scrape -- linkedin jobgether`.
-To run the tests: `npm test` — filters and auth.
+Port 3200, so it can run beside Trueward Guru on 3000 and the calendar on 3100.
+
+To scrape from the terminal: `npm run scrape`, or
+`npm run scrape -- linkedin jobgether`. To run the tests: `npm test`.
+
+## Deploying
+
+Vercel, like the other two. Environment variables:
+
+| | |
+| --- | --- |
+| `NEXT_PUBLIC_SUPABASE_URL` | the shared Supabase project |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | safe in the browser — RLS filters it |
+| `CRON_SECRET` | `openssl rand -base64 32`; without it scheduled runs are refused |
+| `SUPABASE_SERVICE_ROLE_KEY` | **server-only**, reachable only from the cron branch |
+
+Vercel sets `Authorization: Bearer $CRON_SECRET` on cron requests, which is
+what `/api/refresh` checks before it will touch the service-role client.
 
 ## Sources
 
@@ -87,7 +146,7 @@ the **Deleted** tab. Jobs you added by hand can also be deleted permanently ther
 
 Other endpoints: `GET /api/status` (source health), `POST /api/refresh` (fetch now).
 
-Data is stored in SQLite at `data/jobs.db`. Unapplied jobs older than 30 days are pruned automatically.
+Jobs live in the shared Supabase Postgres (`search_job`). Unapplied, non-manual jobs older than 30 days are pruned after each run; dismissed rows are kept deliberately, because they are what stops a job being re-added.
 
 ## Caveats
 
@@ -96,4 +155,4 @@ Data is stored in SQLite at `data/jobs.db`. Unapplied jobs older than 30 days ar
   Check each site's terms of use; keep request volumes low (the defaults are conservative).
 - The remote/US checks are keyword heuristics over the posting text. They are conservative (they would
   rather drop a borderline job than show a hybrid one), but they will occasionally be wrong in both directions.
-  Adjust the patterns in `server/filters.js` and add a test case when you find one.
+  Adjust the patterns in `src/lib/filters.js` and add a test case when you find one.

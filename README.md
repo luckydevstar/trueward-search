@@ -117,6 +117,32 @@ Vercel, like the other two. Environment variables:
 Vercel sets `Authorization: Bearer $CRON_SECRET` on cron requests, which is
 what `/api/refresh` checks before it will touch the service-role client.
 
+## Reading and copying a job
+
+Expanding a row fetches the **full description** — the list itself carries
+only a 400-character snippet, because shipping every description to render a
+list would be most of the payload for none of the page. It is fetched once per
+row and kept, so collapsing and reopening costs nothing.
+
+Copy buttons sit next to the things worth copying: the description, the apply
+URL, and — in the edit form — the title, the apply URL and the company. They
+confirm with a tick, because the clipboard gives no feedback of its own and
+otherwise the only way to know a click worked is to paste somewhere and check.
+The button hides itself where `navigator.clipboard` is unavailable (any
+non-secure context) rather than sitting there doing nothing.
+
+The Apply button carries the destination URL as its tooltip, so you can see
+where it goes before it opens a tab.
+
+**Company size** is shown when a source supplies it. Only Jobright does today
+— it comes back on `companyResult.companySize` as free text ("201-500
+employees"), and it is stored as the board words it rather than parsed into a
+range, because boards disagree about bucket boundaries and parsing would
+invent a precision none of them offer. Everything else leaves it null, which
+is why the pill appears per row rather than occupying a column. To add
+another source, set `companySize` on the job object it returns; `insertJob`
+already carries it through.
+
 ## Sources
 
 | Source | How | Notes |

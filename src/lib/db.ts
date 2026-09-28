@@ -19,6 +19,7 @@ export type JobRow = {
   source: string;
   title: string;
   company: string | null;
+  company_size: string | null;
   location: string | null;
   salary: string | null;
   url: string;
@@ -51,12 +52,13 @@ export function dedupeKey(company = "", title = ""): string {
 }
 
 const LIST_COLUMNS =
-  "id, source, title, company, location, salary, url, snippet, posted_at, fetched_at, status, notes, manual";
+  "id, source, title, company, company_size, location, salary, url, snippet, posted_at, fetched_at, status, notes, manual";
 
 /** Fields a person may edit. Listed, so a column added later is not writable by accident. */
 const EDITABLE = [
   "title",
   "company",
+  "company_size",
   "location",
   "salary",
   "url",
@@ -142,6 +144,7 @@ export async function insertJob(
     sourceId: string | number;
     title: string;
     company?: string | null;
+    companySize?: string | null;
     location?: string | null;
     salary?: string | null;
     url: string;
@@ -156,6 +159,7 @@ export async function insertJob(
     dedupe_key: dedupeKey(job.company ?? "", job.title),
     title: job.title.trim(),
     company: job.company?.trim() || null,
+    company_size: job.companySize?.trim() || null,
     location: job.location?.trim() || null,
     salary: job.salary || null,
     url: job.url,

@@ -17,6 +17,7 @@ async function req(path, opts = {}) {
 }
 
 export const api = {
+  get: (id) => req(`/jobs/${id}`),
   list: (params) => req(`/jobs?${new URLSearchParams(Object.entries(params).filter(([, v]) => v))}`),
   create: (job) => req('/jobs', { method: 'POST', body: job }),
   update: (id, patch) => req(`/jobs/${id}`, { method: 'PATCH', body: patch }),

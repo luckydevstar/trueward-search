@@ -35,6 +35,9 @@ function toJob({ jobResult: j = {}, companyResult: c = {} }) {
     sourceId: j.jobId,
     title: j.jobTitle,
     company: c.companyName,
+    // The only source that supplies this. Taken as the board words it
+    // ("201-500 employees") rather than parsed — see the column comment.
+    companySize: c.companySize || null,
     location: j.jobLocation || (j.jobLocations || []).join('; '),
     salary: j.salaryDesc || null,
     url: `https://jobright.ai/jobs/info/${j.jobId}`,

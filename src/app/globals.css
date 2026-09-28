@@ -143,7 +143,12 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
 .badge { font-size: 11px; padding: 1px 7px; border-radius: 4px; }
 .badge.applied { background: color-mix(in srgb, var(--ok) 14%, transparent); color: var(--ok); }
 .details { margin-top: 8px; }
-.snippet { margin: 0 0 6px; white-space: pre-line; color: var(--text); }
+/* pre-line keeps the board's own paragraph breaks; max-height stops a
+   2,000-word description from burying the rest of the list. */
+.snippet {
+  margin: 0 0 6px; white-space: pre-line; color: var(--text);
+  max-height: 420px; overflow-y: auto;
+}
 .notes { margin: 0 0 6px; }
 .details a { color: var(--accent); word-break: break-all; }
 
@@ -162,6 +167,36 @@ input:focus, select:focus, textarea:focus { outline: 2px solid var(--accent); ou
 .link.danger { color: var(--danger); }
 .title.link { color: var(--text); }
 .title.link:hover { color: var(--accent); }
+
+/* ---- copy controls ------------------------------------------------------
+   A square glyph button, sized to sit inside an input's height without
+   stretching the row it lives in. */
+.btn.icon {
+  padding: 6px 9px; font-size: 14px; line-height: 1;
+  flex: none; min-width: 32px; justify-content: center;
+}
+.btn.icon.small { padding: 3px 7px; font-size: 12px; min-width: 26px; }
+
+/* The input keeps its flex, the button keeps its size. Without min-width:0
+   the input refuses to shrink below its content and pushes the button out. */
+.with-copy { display: flex; gap: 6px; align-items: stretch; }
+.with-copy input { flex: 1; min-width: 0; }
+
+/* The copy button sits beside what it copies, not at the far edge of the
+   row. space-between pushed it against the actions column, where it read as
+   belonging to them rather than to the description. */
+.details-head {
+  display: flex; align-items: center; justify-content: flex-start;
+  gap: 8px; margin: 8px 0 4px;
+}
+.details-head a { min-width: 0; overflow-wrap: anywhere; }
+
+/* Company size: quieter than the company name it follows, and a fixed shape
+   so a row with one does not jump relative to a row without. */
+.size {
+  font-size: 12px; color: var(--muted);
+  border: 1px solid var(--line); border-radius: 999px; padding: 0 7px;
+}
 
 .more { display: flex; justify-content: center; margin-top: 20px; }
 .muted { color: var(--muted); }

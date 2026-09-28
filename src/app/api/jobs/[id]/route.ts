@@ -5,6 +5,25 @@ import { STATUSES, deleteJob, dismissJob, getJob, updateJob } from "@/lib/db";
 
 type Context = { params: Promise<{ id: string }> };
 
+/**
+ * One job, in full.
+ *
+ * The list only carries a 400-character snippet, because shipping every
+ * description to render a list would be most of the payload for none of the
+ * page. Expanding a row asks for the rest, once.
+ */
+export async function GET(_request: Request, { params }: Context) {
+  const auth = await asUser();
+  if (auth.response) return auth.response;
+
+  try {
+    const job = await getJob(auth.db, Number((await params).id));
+    return job ? NextResponse.json(job) : fail("Not found", 404);
+  } catch (error) {
+    return fromError(error);
+  }
+}
+
 export async function PATCH(request: Request, { params }: Context) {
   const auth = await asUser();
   if (auth.response) return auth.response;

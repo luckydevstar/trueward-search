@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { api } from '@/lib/api.js';
+import { CopyButton } from './copy-button.jsx';
 
 const SOURCE_LABELS = {
   jobright: 'Jobright', jobgether: 'Jobgether', remoteyeah: 'RemoteYeah', ziprecruiter: 'ZipRecruiter',
@@ -362,8 +363,45 @@ function SourceBar({ status, lastFinished }) {
   );
 }
 
-function JobRow({ job, open, onToggle, onApply, onDelete, onPurge, onStatus, onEdit }) {
+export function JobRow({ job, open, onToggle, onApply, onDelete, onPurge, onStatus, onEdit }) {
   const dismissed = job.status === 'dismissed';
+
+  /**
+   * The full description, fetched the first time the row is opened.
+   *
+   * The list carries only a 400-character snippet, so "read the whole thing"
+   * needs one more request — but only for the row you actually opened, and
+   * only once: `full` persists after collapsing, so reopening is instant.
+   */
+  // One piece of state, not two: `null` means not asked, `'loading'` means in
+  // flight, an object means arrived. Separate flags would need setting
+  // synchronously in the effect body to avoid a double fetch, which is the
+  // cascade React's linter is pointing at.
+  const [full, setFull] = useState(null);
+  const loadingFull = full === 'loading';
+
+  useEffect(() => {
+    if (!open || full) return;
+    let cancelled = false;
+    // Marked in the callback rather than before the request, so the effect
+    // body itself sets no state. A second run before this resolves is
+    // prevented by `full` becoming 'loading' on the first.
+    Promise.resolve()
+      .then(() => {
+        if (!cancelled) setFull('loading');
+        return api.get(job.id);
+      })
+      .then((j) => { if (!cancelled) setFull(j); })
+      .catch(() => { if (!cancelled) setFull(null); /* the snippet still shows */ });
+    return () => { cancelled = true; };
+  }, [open, full, job.id]);
+
+  const description =
+    (full && full !== 'loading' ? full.description : null) ?? job.snippet ?? '';
+  // Only the snippet is on screen, and it is cut at 400 characters.
+  const truncated =
+    (!full || full === 'loading') && (job.snippet?.length ?? 0) >= 400;
+
   return (
     <li className={`job ${job.status}`}>
       <div className="job-main">
@@ -373,6 +411,9 @@ function JobRow({ job, open, onToggle, onApply, onDelete, onPurge, onStatus, onE
         </div>
         <div className="meta">
           {job.company && <strong>{job.company}</strong>}
+          {/* Only Jobright supplies this, so it appears when it appears
+              rather than leaving an empty slot on every other row. */}
+          {job.company_size && <span className="size">{job.company_size}</span>}
           {job.location && <span>{job.location}</span>}
           {job.salary && <span className="salary">{job.salary}</span>}
           <span className={`src src-${job.source}`}>{SOURCE_LABELS[job.source] || job.source}</span>
@@ -380,14 +421,32 @@ function JobRow({ job, open, onToggle, onApply, onDelete, onPurge, onStatus, onE
         </div>
         {open && (
           <div className="details">
-            {job.snippet && <p className="snippet">{job.snippet}{job.snippet.length >= 400 ? '…' : ''}</p>}
+            {description && (
+              <>
+                <div className="details-head">
+                  <span className="muted small">
+                    Description{loadingFull ? ' · loading full text…' : ''}
+                  </span>
+                  <CopyButton
+                    value={description}
+                    title="Copy the job description"
+                    className="btn icon small"
+                  />
+                </div>
+                <p className="snippet">{description}{truncated ? '…' : ''}</p>
+              </>
+            )}
             {job.notes && <p className="notes"><b>Notes:</b> {job.notes}</p>}
-            <a href={job.url} target="_blank" rel="noopener noreferrer" className="small">{job.url}</a>
+            <div className="details-head">
+              <a href={job.url} target="_blank" rel="noopener noreferrer" className="small">{job.url}</a>
+              <CopyButton value={job.url} title="Copy the apply URL" className="btn icon small" />
+            </div>
           </div>
         )}
       </div>
       <div className="actions">
-        <button className="btn primary" onClick={onApply}>Apply ↗</button>
+        {/* The destination, before you commit to a new tab. */}
+        <button className="btn primary" onClick={onApply} title={job.url}>Apply ↗</button>
         {!dismissed && job.status !== 'applied' && <button className="btn" onClick={() => onStatus('applied')} title="Mark as applied">✓ Applied</button>}
         {job.status === 'applied' && <button className="btn" onClick={() => onStatus('new')} title="Unmark applied">Unmark</button>}
         <button className="btn" onClick={onEdit}>Edit</button>
@@ -404,7 +463,7 @@ function JobRow({ job, open, onToggle, onApply, onDelete, onPurge, onStatus, onE
   );
 }
 
-function JobForm({ job, onCancel, onSave }) {
+export function JobForm({ job, onCancel, onSave }) {
   const isNew = !job.id;
   const toLocal = (iso) => {
     const d = iso ? new Date(iso) : new Date();
@@ -426,10 +485,28 @@ function JobForm({ job, onCancel, onSave }) {
     <div className="modal-backdrop" onMouseDown={(e) => e.target === e.currentTarget && onCancel()}>
       <form className="modal" onSubmit={submit}>
         <h3>{isNew ? 'Add job' : 'Edit job'}</h3>
-        <label>Title*<input required value={form.title} onChange={set('title')} autoFocus /></label>
-        <label>Apply URL*<input required type="url" value={form.url} onChange={set('url')} placeholder="https://…" /></label>
+        <label>
+          Title*
+          <span className="with-copy">
+            <input required value={form.title} onChange={set('title')} autoFocus />
+            <CopyButton value={form.title} title="Copy the title" />
+          </span>
+        </label>
+        <label>
+          Apply URL*
+          <span className="with-copy">
+            <input required type="url" value={form.url} onChange={set('url')} placeholder="https://…" />
+            <CopyButton value={form.url} title="Copy the apply URL" />
+          </span>
+        </label>
         <div className="row">
-          <label>Company<input value={form.company} onChange={set('company')} /></label>
+          <label>
+            Company
+            <span className="with-copy">
+              <input value={form.company} onChange={set('company')} />
+              <CopyButton value={form.company} title="Copy the company" />
+            </span>
+          </label>
           <label>Location<input value={form.location} onChange={set('location')} /></label>
         </div>
         <div className="row">

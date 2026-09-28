@@ -34,12 +34,21 @@ create table if not exists search_job (
   status      text not null default 'new',
   notes       text,
   manual      boolean not null default false,
+  -- Free text as the board words it ("201-500 employees"), not a number.
+  -- Boards disagree about bucket boundaries, and parsing them into a range
+  -- would invent a precision none of them actually offer.
+  --
+  -- Only Jobright supplies this today; everything else leaves it null, which
+  -- is why the UI shows it when present rather than reserving a column.
+  company_size text,
 
   constraint search_job_status_known check (status in ('new', 'applied', 'dismissed')),
   -- What makes a re-scrape idempotent: the same posting from the same board
   -- is one row however many times it is seen.
   constraint search_job_source_unique unique (source, source_id)
 );
+
+alter table search_job add column if not exists company_size text;
 
 -- The list query's order, as one index, so paging never sorts the table.
 create index if not exists search_job_posted_idx
@@ -89,7 +98,7 @@ create table if not exists search_run (
 -- payload for none of the page.
 drop view if exists search_job_list;
 create view search_job_list with (security_invoker = on) as
-  select id, source, title, company, location, salary, url,
+  select id, source, title, company, company_size, location, salary, url,
          left(description, 400) as snippet,
          -- Carried so the search can filter on the full text. It is never
          -- selected — PostgREST can filter on a column the query does not

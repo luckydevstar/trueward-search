@@ -17,7 +17,6 @@ export async function GET() {
 
     return NextResponse.json({
       running,
-      refreshMinutes: Number(process.env.REFRESH_MINUTES || 30),
       sources: SOURCES.map((s) => ({
         name: s.name,
         label: s.label,

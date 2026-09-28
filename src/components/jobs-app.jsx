@@ -252,7 +252,7 @@ export function JobsApp({ email }) {
         </div>
       </header>
 
-      {status && <SourceBar status={status} lastFinished={lastFinished} />}
+      {status && <SourceBar status={status} lastFinished={lastFinished} onRefresh={onRefresh} />}
 
       <div className="toolbar">
         <div className="tabs" role="tablist">
@@ -337,7 +337,7 @@ export function JobsApp({ email }) {
   );
 }
 
-function SourceBar({ status, lastFinished }) {
+function SourceBar({ status, lastFinished, onRefresh }) {
   const runs = Object.fromEntries((status.runs || []).map((r) => [r.source, r]));
   return (
     <div className="sources">
@@ -357,7 +357,11 @@ function SourceBar({ status, lastFinished }) {
         );
       })}
       <span className="muted small">
-        {lastFinished ? `Updated ${timeAgo(lastFinished)}` : ''} · auto-refresh every {status.refreshMinutes} min
+        {lastFinished ? `Updated ${timeAgo(lastFinished)}` : 'Not refreshed yet'}
+        {' · '}
+        <button className="link" onClick={onRefresh} disabled={status.running}>
+          {status.running ? 'refreshing…' : 'refresh now'}
+        </button>
       </span>
     </div>
   );

@@ -61,27 +61,26 @@ The scraper and its seven sources moved across unchanged — they are plain Node
 with `fetch` and cheerio, and rewriting working code to change no behaviour is
 not a migration, it is a risk.
 
-What did change is *who* runs them. There is no long-lived process to hold a
-`setInterval` any more, so scheduled runs come from Vercel Cron
-(`vercel.json`, every 30 minutes) hitting `/api/refresh`.
+What did change is *who* runs them. **There is no schedule.** Scraping happens
+when you press "Refresh now", and the run uses your own session — so RLS
+applies to it exactly as it does to every other request.
 
-That route has two ways in, and they are deliberately different:
+That is not a limitation, it is the reason this app holds **no service-role
+key**. A scheduled run has nobody behind it and therefore no `auth.uid()` for
+the policies to test, which is what would force one in. A key that bypasses
+RLS on a database that also stores candidate SSNs has no business in a web
+deployment if nothing needs it — so nothing does.
 
-- **"Refresh now"** runs as the signed-in admin, under RLS. A person is there,
-  so their own session is the credential.
-- **The cron** has nobody behind it, so it needs the service-role key — and
-  must prove it is the scheduler with `CRON_SECRET`. Without that secret set
-  the cron branch is refused outright rather than falling back to an
-  unauthenticated path that writes to the database.
-
-So the service-role key exists here, unlike in the calendar, but it is
-reachable only from that one branch.
+The only place that key appears is `scripts/scrape-cli.ts`, a script you run by
+hand. Nothing under `src/` reads it.
 
 Scraping is slow, so the route sets `maxDuration = 300`. Each source records
 its own run row as it finishes, so a run cut short by the platform's cap leaves
-the sources that completed updated rather than losing the lot. On a Hobby plan
-the cap is 60s, which will usually cut a full run short — either upgrade, or
-narrow each tick with `{"sources": ["linkedin"]}`.
+the sources that completed updated rather than losing the lot — and refreshing
+again picks up where it left off, because each source skips what it has
+already stored. On a Hobby plan the cap is 60s, which will usually cut a full
+sweep short: either press it twice, or narrow it with
+`{"sources": ["linkedin"]}`.
 
 ## Running it
 
@@ -111,11 +110,14 @@ Vercel, like the other two. Environment variables:
 | --- | --- |
 | `NEXT_PUBLIC_SUPABASE_URL` | the shared Supabase project |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | safe in the browser — RLS filters it |
-| `CRON_SECRET` | `openssl rand -base64 32`; without it scheduled runs are refused |
-| `SUPABASE_SERVICE_ROLE_KEY` | **server-only**, reachable only from the cron branch |
 
-Vercel sets `Authorization: Bearer $CRON_SECRET` on cron requests, which is
-what `/api/refresh` checks before it will touch the service-role client.
+That is the whole list. In particular **do not set
+`SUPABASE_SERVICE_ROLE_KEY` here** — the app never reads it, and setting it
+would put a key that bypasses RLS on a database holding candidate SSNs into a
+web deployment for no reason. It belongs in your local `.env` only, where
+`npm run scrape` uses it.
+
+There is no cron, so there is no `vercel.json`.
 
 ## Reading and copying a job
 
